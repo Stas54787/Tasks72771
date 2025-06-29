@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>TaskFlow — Современный Task Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', Arial, sans-serif;
+      background: linear-gradient(120deg, #181f2b 0%, #23234a 100%);
+      color: #eaeaea;
+      letter-spacing: 0.01em;
+    }
+    .container {
+      max-width: 540px;
+      margin: 48px auto 0 auto;
+      padding: 0 0 32px 0;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      background: linear-gradient(90deg, #d4af37 20%, #b4b4b4 80%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      text-shadow:
+        0 2px 8px #d4af3755,
+        0 1px 0 #fffbe6,
+        0 4px 24px #b4b4b455;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+    }
+    .glass-card {
+      background: rgba(30, 30, 30, 0.82);
+      border-radius: 22px;
+      box-shadow: 0 0 16px 0 #d4af3740, 0 1.5px 0 0 #fffbe622 inset;
+      border: 1.5px solid rgba(212,175,55,0.13);
+      backdrop-filter: blur(12px);
+    }
+    .add-task-form {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      align-items: stretch;
+    }
+    .input-group {
+      width: 100%;
+      position: relative;
+    }
+    .input-field {
+      width: 100%;
+      padding: 16px 20px;
+      border: none;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.04);
+      color: #f5e9c6;
+      font-size: 1.08rem;
+      outline: none;
+      box-sizing: border-box;
+      transition: background 0.18s, box-shadow 0.18s;
+      margin-bottom: 2px;
+      font-family: inherit;
+    }
+    .input-field:focus {
+      background: rgba(212,175,55,0.09);
+      border-color: #fffbe6;
+      box-shadow: 0 0 0 2px #d4af3755;
+    }
+    .input-field::placeholder {
+      color: #bdb6d6;
+      opacity: 0.7;
+    }
+    .priority-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+    .priority-btn {
+      padding: 10px 24px;
+      border-radius: 14px;
+      border: none;
+      font-weight: 600;
+      font-size: 1.01rem;
+      cursor: pointer;
+      background: rgba(255,255,255,0.06);
+      color: #f5e9c6;
+      opacity: 0.85;
+      transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+      box-shadow: 0 2px 8px 0 rgba(0,0,0,0.07);
+      outline: none;
+      letter-spacing: 0.02em;
+      position: relative;
+    }
+    .priority-btn.selected {
+      background: linear-gradient(95deg, #d4af37 10%, #b4b4b4 90%);
+      color: #232323;
+      border: 2px solid #fffbe6;
+    }
+    .priority-btn.priority-low.selected {
+      background: linear-gradient(95deg, #3ec97a 10%, #67eea7 90%);
+    }
+    .priority-btn.priority-medium.selected {
+      background: linear-gradient(95deg, #ffc107 10%, #ffe066 90%);
+      color: #23243a;
+    }
+    .priority-btn.priority-high.selected {
+      background: linear-gradient(95deg, #ff5b5b 10%, #ff7c51 90%);
+    }
+    .add-btn {
+      align-self: center;
+      padding: 15px 48px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(95deg,#d4af37 10%,#b4b4b4 90%);
+      color: #232323;
+      font-weight: 700;
+      font-size: 1.13rem;
+      cursor: pointer;
+      box-shadow: 0 4px 24px 0 #d4af3740;
+      transition: background 0.19s, transform 0.17s, box-shadow 0.18s;
+      letter-spacing: 0.05em;
+      margin-top: 8px;
+    }
+    .add-btn:active {
+      background: linear-gradient(100deg,#b4b4b4 10%,#d4af37 90%);
+    }
+    .tasks-list {
+      margin-top: 10px;
+    }
+    .task-card {
+      background: rgba(255,255,255,0.04);
+      border-left: 5px solid #d4af37;
+      border-radius: 15px;
+      padding: 20px 18px 16px 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 0 16px 0 #d4af3740, 0 1.5px 0 0 #fffbe622 inset;
+      position: relative;
+      transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
+      cursor: pointer;
+    }
+    .task-card.low { border-left-color: #b4b4b4; }
+    .task-card.medium { border-left-color: #d4af37; }
+    .task-card.high { border-left-color: #fffbe6; }
+    .task-card:hover {
+      background: rgba(255,255,255,0.13);
+      transform: translateY(-2px) scale(1.015);
+      box-shadow: 0 8px 24px rgba(161,143,255,0.13);
+    }
+    .task-card.completed {
+      opacity: 0.55;
+      text-decoration: line-through;
+      background: rgba(180,180,180,0.11);
+      transition: background 0.18s, box-shadow 0.18s, transform 0.18s, opacity 0.18s;
+    }
+    .task-checkbox {
+      position: absolute;
+      left: 12px;
+      top: 18px;
+      width: 20px;
+      height: 20px;
+      accent-color: #a18fff;
+      cursor: pointer;
+      z-index: 2;
+    }
+    .task-card .task-title {
+      margin-left: 32px;
+    }
+    .task-title {
+      font-size: 1.13rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 6px;
+      letter-spacing: 0.01em;
+      display: flex;
+      align-items: center;
+    }
+    .task-title-arrow {
+      margin-left: 8px;
+      font-size: 1.1em;
+      color: #a18fff;
+      transition: transform 0.2s;
+    }
+    .task-desc {
+      color: #bdb6d6;
+      font-size: 0.98rem;
+      margin-bottom: 10px;
+    }
+    .task-meta {
+      font-size: 0.89rem;
+      color: #a18fff;
+      opacity: 0.83;
+    }
+    .priority-badge {
+      padding: 5px 14px;
+      border-radius: 18px;
+      font-size: 0.89rem;
+      font-weight: 650;
+      text-transform: uppercase;
+      background: rgba(212,175,55,0.13);
+      color: #d4af37;
+      margin-left: 10px;
+      letter-spacing: 0.03em;
+    }
+    .priority-low {
+
+      background: rgba(0, 212, 255, 0.18);   /* бирюзовый */
+      color: #00d4ff;
+    }
+    .priority-medium {
+      background: rgba(161, 143, 255, 0.18); /* фиолетовый */
+      color: #a18fff;
+    }
+    .priority-high {
+      background: rgba(255, 255, 255, 0.18); /* серебро */
+      color: #eaeaea;
+    }
+    .add-subtask-btn {
+      padding: 7px 16px;
+      border-radius: 8px;
+      border: 2px solid #d4af37;
+      background: transparent;
+      color: #d4af37;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.18s, color 0.18s;
+      font-size: 1.1em;
+    }
+    .add-subtask-btn:hover {
+      background: #d4af37;
+      color: #232323;
+    }
+    .subtask-input {
+      background: transparent !important;
+      color: #fff;
+      border: 1.5px solid #d4af37;
+      box-shadow: none;
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 1rem;
+      transition: border-color 0.18s;
+    }
+    .subtask-input:focus {
+      border-color: #ff5b98;
+    }
+    .subtask-input::placeholder {
+      color: #bdb6d6;
+      opacity: 0.7;
+    }
+    @media (max-width: 600px) {
+      .container { padding: 0 2vw 16px; }
+      .header h1 { font-size: 1.5rem; }
+      .glass-card { padding: 18px 4vw 14px 4vw; }
+      .task-card { padding: 12px 6vw 10px 6vw; }
+    }
+    #completed-tasks-list {
+      min-height:90px; /* например, увеличенная высота */
+    }
+    #completed-header {
+  font-weight: 600;
+  color: #bdb6d6;
+  margin-bottom: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;      /* по вертикали */
+  justify-content: center;  /* по горизонтали */
+  user-select: none;
+  gap: 8px;
+  height: 64px;             /* фиксированная высота */
+  min-height: 64px;
+}
+
+/* Общий премиальный объемный стиль для текста */
+body, .glass-card, .task-card, .input-field, .subtask-input, .priority-btn, .add-btn, .add-subtask-btn, .task-title, .task-desc, .priority-badge, #completed-header, footer {
+  text-shadow:
+    0 2px 8px rgba(0,212,255,0.10),
+    0 1px 0 #a18fff,
+    0 4px 24px rgba(161,143,255,0.13);
+}
+
+/* Для заголовка — премиум градиент и объемная тень */
+.header h1 {
+  background: linear-gradient(90deg, #00d4ff 0%, #a18fff 40%, #eaeaea 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow:
+    0 2px 8px #a18fff55,
+    0 1px 0 #eaeaea,
+    0 4px 24px #00d4ff55;
+}
+
+/* Для кнопок — чуть более выраженная тень */
+.add-btn, .priority-btn, .add-subtask-btn {
+  text-shadow:
+    0 2px 8px #d4af3740,
+    0 1px 0 #fffbe6;
+  font-weight: 700;
+}
+
+/* Для footer — светлая объемная тень */
+footer {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100vw;
+  background: transparent;
+  z-index: 10;
+  text-align: center;
+  padding: 18px 0 12px 0;
+  color: #b4b4b4;
+  font-size: 1.01rem;
+  letter-spacing: 0.03em;
+  user-select: none;
+}
+.glass-card, .task-card, .add-btn, .priority-btn, .add-subtask-btn {
+  transition: background 0.35s cubic-bezier(.4,2,.3,1), color 0.25s, box-shadow 0.35s cubic-bezier(.4,2,.3,1), transform 0.25s;
+}
+.login-btn {
+  font-size: 1.05rem;           /* уменьшен размер шрифта */
+  padding: 16px 0;
+  border-radius: 14px;
+  background: linear-gradient(95deg,#00d4ff 10%,#a18fff 90%);
+  color: #232323;
+  font-weight: 900;
+  box-shadow: 0 8px 32px #a18fff55;
+  cursor: pointer;
+  border: none;
+  letter-spacing: 0.05em;
+  min-width: 180px;
+  max-width: 220px;             /* увеличена максимальная ширина */
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: normal;          /* разрешить перенос */
+  word-break: break-word;       /* переносить длинные слова */
+  transition: background 0.18s, box-shadow 0.18s, color 0.18s;
+}
+.google-btn {
+  background: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px auto 0 auto;
+  box-shadow: 0 2px 8px #a18fff33;
+  cursor: pointer;
+  transition: box-shadow 0.18s;
+}
+.google-btn:hover {
+  box-shadow: 0 4px 16px #a18fff55;
+  background: #f5f5f5;
+}
+#login-screen {
+  position: fixed;
+  z-index: 100;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* Центр по вертикали */
+  background: rgba(24,31,43,0.98);
+}
+  </style>
+</head>
+<body>
+  <canvas id="bg-anim" style="position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:0;pointer-events:none;"></canvas>
+  
+  <!-- Кнопка входа -->
+  <div id="login-screen" style="
+  position:fixed;
+  z-index:100;
+  left:0;
+  top:0;
+  width:100vw;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center; /* ВЫРАВНИВАЕТ ПО ВЕРТИКАЛИ */
+  background:rgba(24,31,43,0.98);
+">
+  <div style="display:flex;gap:18px;justify-content:center;align-items:center;margin-bottom:24px;">
+    <button class="login-btn" id="show-login-form">Войти</button>
+    <button class="login-btn" id="show-register-form">Зарегистрироваться</button>
+  </div>
+  <div id="email-form" style="display:none;flex-direction:column;gap:12px;margin-bottom:18px;width:340px;max-width:90vw;">
+    <input id="email-input" type="email" placeholder="Email" style="padding:10px;border-radius:8px;border:1px solid #ccc;">
+    <input id="password-input" type="password" placeholder="Пароль" style="padding:10px;border-radius:8px;border:1px solid #ccc;">
+    <button id="email-action-btn" class="login-btn" style="font-size:1.1rem;padding:12px 0;margin-top:8px;text-align:center;">Войти</button>
+    <div id="email-error" style="color:#ff5b5b;font-size:1rem;text-align:center;min-height:24px;"></div>
+  </div>
+  <button id="login-google" class="google-btn" title="Войти через Google" style="margin-top:8px;">
+    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width:28px;height:28px;vertical-align:middle;">
+  </button>
+</div>
+
+  <!-- Основное приложение -->
+  <div id="main-app" style="display:none;">
+    <div class="container">
+      <div class="header" style="display:flex;justify-content:space-between;align-items:center;">
+  <h1><b><i>Задачник Группа 72771</i></b></h1>
+  <button id="logout-btn" style="display:none;padding:10px 22px;border-radius:12px;background:#a18fff;color:#fff;font-weight:700;border:none;cursor:pointer;font-size:1.05rem;">Выйти</button>
+</div>
+      <div class="glass-card">
+        <form class="add-task-form">
+          <div class="input-group">
+            <input type="text" class="input-field" placeholder="Название задачи">
+          </div>
+          <div class="input-group">
+            <input type="text" class="input-field" placeholder="Описание (необязательно)">
+          </div>
+          <div class="priority-group">
+            <button type="button" class="priority-btn priority-low selected" data-priority="low">Низкий</button>
+            <button type="button" class="priority-btn priority-medium" data-priority="medium">Средний</button>
+            <button type="button" class="priority-btn priority-high" data-priority="high">Высокий</button>
+          </div>
+          <button type="button" class="add-btn">Добавить</button>
+        </form>
+      </div>
+      <div class="glass-card tasks-list" id="active-tasks-list">
+        <!-- Активные задачи будут здесь -->
+      </div>
+      <div class="glass-card tasks-list" id="completed-tasks-list" style="margin-top: 0;">
+        <div id="completed-header" style="font-weight:600;color:#bdb6d6;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;user-select:none;">
+          <span style="margin-right:8px;">Выполненные задачи</span>
+          <span id="completed-arrow" style="transition:transform 0.2s;display:inline-block;">&#9660;</span>
+        </div>
+        <div id="completed-tasks-content">
+          <!-- Выполненные задачи будут здесь -->
+        </div>
+      </div>
+    </div>
+    <footer style="width:100vw;text-align:center;padding:18px 0 12px 0;color:#b4b4b4;font-size:1.01rem;letter-spacing:0.03em;position:fixed;left:0;bottom:0;background:transparent;z-index:10;user-select:none;">
+      <span>© 2025 Сизько Станислав · Все права защищены·™</span>
+    </footer>
+  </div>
+
+  <script>
+const form = document.querySelector('.add-task-form');
+const titleInput = form.querySelector('.input-field[placeholder="Название задачи"]');
+const descInput = form.querySelector('.input-field[placeholder="Описание (необязательно)"]');
+const addBtn = form.querySelector('.add-btn');
+const priorityBtns = form.querySelectorAll('.priority-btn');
+const activeTasksList = document.getElementById('active-tasks-list');
+const completedTasksContent = document.getElementById('completed-tasks-content');
+
+// Получаем элементы для управления раскрытием
+const completedHeader = document.getElementById('completed-header');
+const completedArrow = document.getElementById('completed-arrow');
+
+// Скрываем выполненные задачи по умолчанию
+completedTasksContent.style.display = 'none';
+completedArrow.style.transform = 'rotate(-90deg)';
+
+// Обработчик для раскрытия/сворачивания по клику на заголовок или стрелку
+completedHeader.addEventListener('click', function() {
+  if (completedTasksContent.style.display === 'none') {
+    completedTasksContent.style.display = '';
+    completedArrow.style.transform = 'rotate(0deg)';
+  } else {
+    completedTasksContent.style.display = 'none';
+    completedArrow.style.transform = 'rotate(-90deg)';
+  }
+});
+
+// Приоритет по умолчанию
+let selectedPriority = 'low';
+priorityBtns.forEach(btn => {
+  btn.addEventListener('click', function() {
+    priorityBtns.forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedPriority = btn.getAttribute('data-priority');
+  });
+});
+
+addBtn.addEventListener('click', function() {
+  const title = titleInput.value.trim();
+  const desc = descInput.value.trim();
+  if (!title) {
+    titleInput.focus();
+    return;
+  }
+  // Создаём карточку задачи
+  const taskCard = document.createElement('div');
+  taskCard.className = `task-card ${selectedPriority}`;
+  taskCard.innerHTML = `
+    <input type="checkbox" class="task-checkbox">
+    <div class="task-title">
+      <span>${title}</span>
+      <span class="priority-badge priority-${selectedPriority}">
+        ${selectedPriority === 'low' ? 'Низкий' : selectedPriority === 'medium' ? 'Средний' : 'Высокий'}
+      </span>
+    </div>
+    ${desc ? `<div class="task-desc">${desc}</div>` : ''}
+    <div class="subtasks-section">
+      <div class="subtasks-toggle" style="color:#a18fff;cursor:pointer;font-size:0.98em;margin-bottom:6px;user-select:none;">
+        <span>Подзадачи</span>
+        <span class="subtasks-arrow" style="margin-left:6px;transition:transform 0.2s;">&#9660;</span>
+      </div>
+      <ul class="subtasks-list" style="display:none;list-style:none;padding-left:0;margin:0 0 8px 0;"></ul>
+      <form class="add-subtask-form" style="display:none;gap:8px;align-items:center;">
+        <input type="text" class="subtask-input" placeholder="Добавить подзадачу..." style="flex:1;">
+        <button type="submit" class="add-subtask-btn">+</button>
+      </form>
+    </div>
+  `;
+  // Обработка чекбокса (перемещение в выполненные)
+  const checkbox = taskCard.querySelector('.task-checkbox');
+  checkbox.addEventListener('change', function() {
+    if (checkbox.checked) {
+      taskCard.classList.add('completed');
+      completedTasksContent.appendChild(taskCard);
+      // Список всегда свёрнут после добавления задачи
+      completedTasksContent.style.display = 'none';
+      completedArrow.style.transform = 'rotate(-90deg)';
+    } else {
+      taskCard.classList.remove('completed');
+      activeTasksList.appendChild(taskCard);
+    }
+  });
+  // Открытие/закрытие выпадающего списка подзадач
+  const subtasksSection = taskCard.querySelector('.subtasks-section');
+  const subtasksToggle = taskCard.querySelector('.subtasks-toggle');
+  const subtasksArrow = taskCard.querySelector('.subtasks-arrow');
+  const subtasksList = taskCard.querySelector('.subtasks-list');
+  const addSubtaskForm = taskCard.querySelector('.add-subtask-form');
+  const subtaskInput = addSubtaskForm.querySelector('.subtask-input');
+
+  subtasksToggle.addEventListener('click', () => {
+    const isOpen = subtasksList.style.display !== 'none';
+    subtasksList.style.display = isOpen ? 'none' : '';
+    addSubtaskForm.style.display = isOpen ? 'none' : 'flex';
+    subtasksArrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  });
+
+  // Добавление подзадачи
+  addSubtaskForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const text = subtaskInput.value.trim();
+    if (!text) return;
+    const li = document.createElement('li');
+    li.innerHTML = `<input type="checkbox" style="margin-right:8px;"> <span class="subtask-text">${text}</span>`;
+    subtasksList.appendChild(li);
+    subtaskInput.value = '';
+    // Зачёркивание подзадачи при выполнении
+    const checkbox = li.querySelector('input[type="checkbox"]');
+    const span = li.querySelector('.subtask-text');
+    checkbox.addEventListener('change', function() {
+      if (checkbox.checked) {
+        span.style.textDecoration = 'line-through';
+        span.style.opacity = '0.6';
+      } else {
+        span.style.textDecoration = '';
+        span.style.opacity = '';
+      }
+    });
+  });
+  // Добавляем задачу в активные
+  activeTasksList.appendChild(taskCard);
+  // Сброс формы
+  titleInput.value = '';
+  descInput.value = '';
+  priorityBtns.forEach(b => b.classList.remove('selected'));
+  priorityBtns[0].classList.add('selected');
+  selectedPriority = 'low';
+});
+
+// Сохранить задачи
+function saveTasksToCloud(tasks, userId) {
+  db.collection('users').doc(userId).set({ tasks });
+}
+
+// Загрузить задачи
+function loadTasksFromCloud(userId, callback) {
+  db.collection('users').doc(userId).get().then(doc => {
+    if (doc.exists) {
+      callback(doc.data().tasks || []);
+    } else {
+      callback([]);
+    }
+  });
+}
+
+// Функция сохранения задач в локальное хранилище
+function saveTasks() {
+  const tasks = [];
+  document.querySelectorAll('#active-tasks-list .task-card, #completed-tasks-content .task-card').forEach(card => {
+    const title = card.querySelector('.task-title span').textContent;
+    const descElem = card.querySelector('.task-desc');
+    const desc = descElem ? descElem.textContent : '';
+    const priority = card.classList.contains('high') ? 'high' : card.classList.contains('medium') ? 'medium' : 'low';
+    const completed = card.parentElement.id === 'completed-tasks-content';
+    // Подзадачи
+    const subtasks = [];
+    card.querySelectorAll('.subtasks-list li').forEach(li => {
+      subtasks.push({
+        text: li.querySelector('.subtask-text').textContent,
+        done: li.querySelector('input[type="checkbox"]').checked
+      });
+    });
+    tasks.push({ title, desc, priority, completed, subtasks });
+  });
+  localStorage.setItem('tasks', JSON.stringify(tasks));
+}
+
+// Загрузка задач из локального хранилища
+function loadTasks() {
+  const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+  tasks.forEach(task => {
+    addTaskFromStorage(task);
+  });
+}
+
+function addTaskFromStorage(task) {
+  // Создание карточки задачи (аналогично addBtn.addEventListener)
+  const taskCard = document.createElement('div');
+  taskCard.className = `task-card ${task.priority}${task.completed ? ' completed' : ''}`;
+  taskCard.innerHTML = `
+    <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}>
+    <div class="task-title">
+      <span>${task.title}</span>
+      <span class="priority-badge priority-${task.priority}">
+        ${task.priority === 'low' ? 'Низкий' : task.priority === 'medium' ? 'Средний' : 'Высокий'}
+      </span>
+    </div>
+    ${task.desc ? `<div class="task-desc">${task.desc}</div>` : ''}
+    <div class="subtasks-section">
+      <div class="subtasks-toggle" style="color:#a18fff;cursor:pointer;font-size:0.98em;margin-bottom:6px;user-select:none;">
+        <span>Подзадачи</span>
+        <span class="subtasks-arrow" style="margin-left:6px;transition:transform 0.2s;">&#9660;</span>
+      </div>
+      <ul class="subtasks-list" style="display:none;list-style:none;padding-left:0;margin:0 0 8px 0;">
+        ${task.subtasks.map(st => `
+          <li>
+            <input type="checkbox" ${st.done ? 'checked' : ''} style="margin-right:8px;">
+            <span class="subtask-text" style="${st.done ? 'text-decoration:line-through;opacity:0.6;' : ''}">${st.text}</span>
+          </li>
+        `).join('')}
+      </ul>
+      <form class="add-subtask-form" style="display:none;gap:8px;align-items:center;">
+        <input type="text" class="subtask-input" placeholder="Добавить подзадачу..." style="flex:1;">
+        <button type="submit" class="add-subtask-btn">+</button>
+      </form>
+    </div>
+  `;
+  // --- Повторите обработчики чекбокса, подзадач, раскрытия (как в основном коде) ---
+  const checkbox = taskCard.querySelector('.task-checkbox');
+  checkbox.addEventListener('change', function() {
+    if (checkbox.checked) {
+      taskCard.classList.add('completed');
+      completedTasksContent.appendChild(taskCard);
+      completedTasksContent.style.display = 'none';
+      completedArrow.style.transform = 'rotate(-90deg)';
+    } else {
+      taskCard.classList.remove('completed');
+      activeTasksList.appendChild(taskCard);
+    }
+    saveTasks();
+  });
+
+  // Подзадачи: обработка чекбоксов
+  taskCard.querySelectorAll('.subtasks-list li').forEach(li => {
+    const cb = li.querySelector('input[type="checkbox"]');
+    const span = li.querySelector('.subtask-text');
+    cb.addEventListener('change', function() {
+      if (cb.checked) {
+        span.style.textDecoration = 'line-through';
+        span.style.opacity = '0.6';
+      } else {
+        span.style.textDecoration = '';
+        span.style.opacity = '';
+      }
+      saveTasks();
+    });
+  });
+
+  // Открытие/закрытие подзадач
+  const subtasksToggle = taskCard.querySelector('.subtasks-toggle');
+  const subtasksArrow = taskCard.querySelector('.subtasks-arrow');
+  const subtasksList = taskCard.querySelector('.subtasks-list');
+  const addSubtaskForm = taskCard.querySelector('.add-subtask-form');
+  const subtaskInput = addSubtaskForm.querySelector('.subtask-input');
+  subtasksToggle.addEventListener('click', () => {
+    const isOpen = subtasksList.style.display !== 'none';
+    subtasksList.style.display = isOpen ? 'none' : '';
+    addSubtaskForm.style.display = isOpen ? 'none' : 'flex';
+    subtasksArrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  });
+  // Добавление подзадачи
+  addSubtaskForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const text = subtaskInput.value.trim();
+    if (!text) return;
+    const li = document.createElement('li');
+    li.innerHTML = `<input type="checkbox" style="margin-right:8px;"> <span class="subtask-text">${text}</span>`;
+    subtasksList.appendChild(li);
+    subtaskInput.value = '';
+    const checkbox = li.querySelector('input[type="checkbox"]');
+    const span = li.querySelector('.subtask-text');
+    checkbox.addEventListener('change', function() {
+      if (checkbox.checked) {
+        span.style.textDecoration = 'line-through';
+        span.style.opacity = '0.6';
+      } else {
+        span.style.textDecoration = '';
+        span.style.opacity = '';
+      }
+      saveTasks();
+    });
+    saveTasks();
+  });
+
+  // Добавляем задачу в нужный список
+  if (task.completed) {
+    completedTasksContent.appendChild(taskCard);
+  } else {
+    activeTasksList.appendChild(taskCard);
+  }
+}
+
+// Загружаем задачи при загрузке страницы
+loadTasks();
+</script>
+<script>
+const loginBtn = document.getElementById('login-btn');
+let userId = null;
+
+loginBtn.onclick = function() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).then(result => {
+    userId = result.user.uid;
+    // Скрыть login-screen, показать приложение
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    // Загружаем задачи из облака
+    loadTasksFromCloud(userId, tasks => {
+      // Очистить старые задачи
+      document.getElementById('active-tasks-list').innerHTML = '';
+      document.getElementById('completed-tasks-content').innerHTML = '';
+      // Добавить задачи на страницу
+      tasks.forEach(addTaskFromStorage);
+    });
+  });
+};
+
+// Если пользователь уже авторизован (например, обновил страницу)
+firebase.auth().onAuthStateChanged(user => {
+  const logoutBtn = document.getElementById('logout-btn');
+  const emailForm = document.getElementById('email-form');
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    if (logoutBtn) logoutBtn.style.display = '';
+    // ...логика загрузки задач...
+  } else {
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    document.getElementById('login-screen').style.display = '';
+    document.getElementById('main-app').style.display = 'none';
+    // Сбросить форму авторизации в начальное состояние
+    if (emailForm) emailForm.style.display = 'none';
+    document.getElementById('email-error').textContent = '';
+    document.getElementById('email-input').value = '';
+    document.getElementById('password-input').value = '';
+    // Кнопки "Войти" и "Зарегистрироваться" всегда видимы по умолчанию
+  }
+});
+</script>
+<script>
+const icons = [
+  '🏆','📈','📊','💡','⏰','🗂️','📝','📅','💼','✅','📋','🔔','📎','🕒','🔑'
+];
+const iconColors = [
+  'rgba(0,212,255,0.22)',    // бирюзовый
+  'rgba(161,143,255,0.22)',  // фиолетовый
+  'rgba(234,234,234,0.18)',  // серебро
+  'rgba(44,62,80,0.19)',     // графит
+  'rgba(0,0,0,0.13)'         // глубокий чёрный
+];
+const STAR_COLOR = 'rgba(161,143,255,0.22)'; // фиолетовые звёзды
+
+// --- параметры для звезд ---
+const STAR_MIN_SIZE = 1.5;
+const STAR_MAX_SIZE = 3.5;
+const STAR_COUNT = 90;
+
+const canvas = document.getElementById('bg-anim');
+const ctx = canvas.getContext('2d');
+let W = window.innerWidth, H = window.innerHeight;
+function resizeCanvas() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function randomBetween(a, b) {
+  return a + Math.random() * (b - a);
+}
+function randomIcon() {
+  return icons[Math.floor(Math.random() * icons.length)];
+}
+
+// --- иконки ---
+let particles = [];
+for (let i = 0; i < 26; i++) {
+  particles.push({
+    x: randomBetween(0, W),
+    y: randomBetween(H, H + 300),
+    size: randomBetween(32, 54),
+    speed: randomBetween(0.12, 0.22), // для иконок
+    drift: randomBetween(-0.18, 0.18),
+    color: iconColors[Math.floor(Math.random() * iconColors.length)],
+    icon: randomIcon(),
+    alpha: randomBetween(0.18, 0.28),
+    rotate: randomBetween(0, Math.PI * 2),
+    rotateSpeed: randomBetween(-0.01, 0.01)
+  });
+}
+
+// --- звезды ---
+let stars = [];
+for (let i = 0; i < STAR_COUNT; i++) {
+  stars.push({
+    x: randomBetween(0, W),
+    y: randomBetween(0, H),
+    size: randomBetween(STAR_MIN_SIZE, STAR_MAX_SIZE),
+    speed: randomBetween(0.04, 0.09), // для звёзд
+    alpha: randomBetween(0.13, 0.25)
+  });
+}
+
+function animateParticles() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Рисуем звезды
+  for (let s of stars) {
+    ctx.save();
+    ctx.globalAlpha = s.alpha;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.size, 0, 2 * Math.PI);
+    ctx.fillStyle = STAR_COLOR;
+    ctx.shadowColor = "#fff";
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.restore();
+    s.y -= s.speed;
+    if (s.y < -s.size) {
+      s.x = randomBetween(0, W);
+      s.y = H + randomBetween(0, 40);
+      s.size = randomBetween(STAR_MIN_SIZE, STAR_MAX_SIZE);
+      s.speed = randomBetween(0.04, 0.09);
+      s.alpha = randomBetween(0.13, 0.25);
+    }
+  }
+
+  // Рисуем иконки
+  for (let p of particles) {
+    ctx.save();
+    ctx.globalAlpha = p.alpha;
+    ctx.font = `${p.size}px Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, Arial, sans-serif`;
+    ctx.fillStyle = p.color;
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rotate);
+    ctx.fillText(p.icon, 0, 0);
+    ctx.restore();
+    p.y -= p.speed;
+    p.x += p.drift;
+    p.rotate += p.rotateSpeed;
+    if (p.y < -60) {
+      p.x = randomBetween(0, W);
+      p.y = H + randomBetween(10, 200);
+      p.size = randomBetween(32, 54);
+      p.speed = randomBetween(0.12, 0.22);
+      p.drift = randomBetween(-0.18, 0.18);
+      p.color = iconColors[Math.floor(Math.random() * iconColors.length)];
+      p.icon = randomIcon();
+      p.alpha = randomBetween(0.18, 0.28);
+      p.rotate = randomBetween(0, Math.PI * 2);
+      p.rotateSpeed = randomBetween(-0.01, 0.01);
+    }
+  }
+
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+</script>
+<!-- Firebase App (core) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<!-- Firestore -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBVnoQ-qJQmKUTOvE-JZY9pdh9n5aEi6GU",
+    authDomain: "tasks-8a909.firebaseapp.com",
+    projectId: "tasks-8a909",
+    storageBucket: "tasks-8a909.appspot.com",
+    messagingSenderId: "529191959641",
+    appId: "1:529191959641:web:fea0bf91f03039adce8548",
+    measurementId: "G-MXW3RDB1SW"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
+<script>
+// Google авторизация
+document.getElementById('login-google').onclick = function() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider);
+};
+
+// После входа — скрываем login-screen, показываем приложение
+firebase.auth().onAuthStateChanged(user => {
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    // ...твоя логика загрузки задач...
+  }
+});
+</script>
+<script>
+// Показываем форму для входа или регистрации
+let authMode = 'login'; // или 'register'
+const emailForm = document.getElementById('email-form');
+const emailActionBtn = document.getElementById('email-action-btn');
+const emailError = document.getElementById('email-error');
+
+document.getElementById('show-login-form').onclick = function() {
+  authMode = 'login';
+  emailForm.style.display = 'flex';
+  emailActionBtn.textContent = 'Войти';
+  emailError.textContent = '';
+};
+document.getElementById('show-register-form').onclick = function() {
+  authMode = 'register';
+  emailForm.style.display = 'flex';
+  emailActionBtn.textContent = 'Зарегистрироваться';
+  emailError.textContent = '';
+};
+
+// Вход или регистрация по email/паролю
+emailActionBtn.onclick = function() {
+  const email = document.getElementById('email-input').value.trim();
+  const password = document.getElementById('password-input').value.trim();
+  emailError.textContent = '';
+  if (!email || !password) {
+    emailError.textContent = 'Введите email и пароль';
+    return;
+  }
+  if (authMode === 'login') {
+    firebase.auth().signInWithEmailAndPassword(email, password)
+      .catch(e => emailError.textContent = e.message);
+  } else {
+    firebase.auth().createUserWithEmailAndPassword(email, password)
+      .catch(e => emailError.textContent = e.message);
+  }
+};
+
+// После входа — скрываем login-screen, показываем приложение
+firebase.auth().onAuthStateChanged(user => {
+  const logoutBtn = document.getElementById('logout-btn');
+  const emailForm = document.getElementById('email-form');
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    if (logoutBtn) logoutBtn.style.display = '';
+    // ...логика загрузки задач...
+  } else {
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    document.getElementById('login-screen').style.display = '';
+    document.getElementById('main-app').style.display = 'none';
+    // Сбросить форму авторизации в начальное состояние
+    if (emailForm) emailForm.style.display = 'none';
+    document.getElementById('email-error').textContent = '';
+    document.getElementById('email-input').value = '';
+    document.getElementById('password-input').value = '';
+    // Кнопки "Войти" и "Зарегистрироваться" всегда видимы по умолчанию
+  }
+});
+</script>
+<script>
+document.getElementById('logout-btn').onclick = function() {
+  firebase.auth().signOut();
+  // После выхода автоматически покажется login-screen через onAuthStateChanged
+};
+</script>
