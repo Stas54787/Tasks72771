@@ -608,4 +608,476 @@ addBtn.addEventListener('click', function() {
       </div>
       <ul class="subtasks-list" style="display:none;list-style:none;padding-left:0;margin:0 0 8px 0;"></ul>
       <form class="add-subtask-form" style="display:none;gap:8px;align-items:center;">
-        <input type="text" class="subtask-input" placeholder="Добавить подзадачу..." style="fl
+        <input type="text" class="subtask-input" placeholder="Добавить подзадачу..." style="flex:1;">
+        <button type="submit" class="add-subtask-btn">+</button>
+      </form>
+    </div>
+  `;
+  // Обработка чекбокса (перемещение в выполненные)
+  const checkbox = taskCard.querySelector('.task-checkbox');
+  checkbox.addEventListener('change', function() {
+    if (checkbox.checked) {
+      taskCard.classList.add('completed');
+      completedTasksContent.appendChild(taskCard);
+      // Список всегда свёрнут после добавления задачи
+      completedTasksContent.style.display = 'none';
+      completedArrow.style.transform = 'rotate(-90deg)';
+    } else {
+      taskCard.classList.remove('completed');
+      activeTasksList.appendChild(taskCard);
+    }
+  });
+  // Открытие/закрытие выпадающего списка подзадач
+  const subtasksSection = taskCard.querySelector('.subtasks-section');
+  const subtasksToggle = taskCard.querySelector('.subtasks-toggle');
+  const subtasksArrow = taskCard.querySelector('.subtasks-arrow');
+  const subtasksList = taskCard.querySelector('.subtasks-list');
+  const addSubtaskForm = taskCard.querySelector('.add-subtask-form');
+  const subtaskInput = addSubtaskForm.querySelector('.subtask-input');
+
+  subtasksToggle.addEventListener('click', () => {
+    const isOpen = subtasksList.style.display !== 'none';
+    subtasksList.style.display = isOpen ? 'none' : '';
+    addSubtaskForm.style.display = isOpen ? 'none' : 'flex';
+    subtasksArrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  });
+
+  // Добавление подзадачи
+  addSubtaskForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const text = subtaskInput.value.trim();
+    if (!text) return;
+    const li = document.createElement('li');
+    li.innerHTML = `<input type="checkbox" style="margin-right:8px;"> <span class="subtask-text">${text}</span>`;
+    subtasksList.appendChild(li);
+    subtaskInput.value = '';
+    // Зачёркивание подзадачи при выполнении
+    const checkbox = li.querySelector('input[type="checkbox"]');
+    const span = li.querySelector('.subtask-text');
+    checkbox.addEventListener('change', function() {
+      if (checkbox.checked) {
+        span.style.textDecoration = 'line-through';
+        span.style.opacity = '0.6';
+      } else {
+        span.style.textDecoration = '';
+        span.style.opacity = '';
+      }
+    });
+  });
+  // Добавляем задачу в активные
+  activeTasksList.appendChild(taskCard);
+  // Сброс формы
+  titleInput.value = '';
+  descInput.value = '';
+  priorityBtns.forEach(b => b.classList.remove('selected'));
+  priorityBtns[0].classList.add('selected');
+  selectedPriority = 'low';
+});
+
+// --- Сохраняем задачи только в Firestore ---
+function saveTasksToCloud(tasks, userId) {
+  db.collection('users').doc(userId).set({ tasks });
+}
+
+// --- Загружаем задачи только из Firestore ---
+function loadTasksFromCloud(userId, callback) {
+  db.collection('users').doc(userId).get().then(doc => {
+    if (doc.exists) {
+      callback(doc.data().tasks || []);
+    } else {
+      callback([]);
+    }
+  });
+}
+
+// --- Сохраняем задачи после любого изменения ---
+function saveTasks() {
+  const tasks = [];
+  document.querySelectorAll('#active-tasks-list .task-card, #completed-tasks-content .task-card').forEach(card => {
+    const title = card.querySelector('.task-title span').textContent;
+    const descElem = card.querySelector('.task-desc');
+    const desc = descElem ? descElem.textContent : '';
+    const priority = card.classList.contains('high') ? 'high' : card.classList.contains('medium') ? 'medium' : 'low';
+    const completed = card.parentElement.id === 'completed-tasks-content';
+    // Подзадачи
+    const subtasks = [];
+    card.querySelectorAll('.subtasks-list li').forEach(li => {
+      subtasks.push({
+        text: li.querySelector('.subtask-text').textContent,
+        done: li.querySelector('input[type="checkbox"]').checked
+      });
+    });
+    tasks.push({ title, desc, priority, completed, subtasks });
+  });
+  // Сохраняем только в облако
+  const user = firebase.auth().currentUser;
+  if (user) {
+    saveTasksToCloud(tasks, user.uid);
+  }
+}
+
+// --- Везде, где меняются задачи, вызывайте saveTasks() ---
+// Например, после добавления задачи, изменения чекбокса, добавления подзадачи и т.д.
+// Пример:
+addBtn.addEventListener('click', function() {
+  // ...создание задачи...
+  activeTasksList.appendChild(taskCard);
+  // Сохраняем в облако
+  saveTasks();
+  // ...сброс формы...
+});
+
+// Аналогично для чекбоксов и подзадач:
+checkbox.addEventListener('change', function() {
+  // ...перемещение задачи...
+  saveTasks();
+});
+
+// --- При входе всегда загружайте задачи из облака ---
+firebase.auth().onAuthStateChanged(user => {
+  const logoutBtn = document.getElementById('logout-btn');
+  const emailForm = document.getElementById('email-form');
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    if (logoutBtn) logoutBtn.style.display = '';
+    loadTasksFromCloud(user.uid, tasks => {
+      document.getElementById('active-tasks-list').innerHTML = '';
+      document.getElementById('completed-tasks-content').innerHTML = '';
+      tasks.forEach(addTaskFromStorage);
+    });
+  } else {
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    document.getElementById('login-screen').style.display = '';
+    document.getElementById('main-app').style.display = 'none';
+    if (emailForm) emailForm.style.display = 'none';
+    document.getElementById('email-error').textContent = '';
+    document.getElementById('email-input').value = '';
+    document.getElementById('password-input').value = '';
+  }
+});
+</script>
+<script>
+const loginBtn = document.getElementById('login-btn');
+let userId = null;
+
+loginBtn.onclick = function() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).then(result => {
+    userId = result.user.uid;
+    // Скрыть login-screen, показать приложение
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    // Загружаем задачи из облака
+    loadTasksFromCloud(userId, tasks => {
+      // Очистить старые задачи
+      document.getElementById('active-tasks-list').innerHTML = '';
+      document.getElementById('completed-tasks-content').innerHTML = '';
+      // Добавить задачи на страницу
+      tasks.forEach(addTaskFromStorage);
+    });
+  });
+};
+
+// Если пользователь уже авторизован (например, обновил страницу)
+firebase.auth().onAuthStateChanged(user => {
+  const logoutBtn = document.getElementById('logout-btn');
+  const emailForm = document.getElementById('email-form');
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    if (logoutBtn) logoutBtn.style.display = '';
+    // Загружаем задачи из облака
+    loadTasksFromCloud(user.uid, tasks => {
+      // Очистить старые задачи
+      document.getElementById('active-tasks-list').innerHTML = '';
+      document.getElementById('completed-tasks-content').innerHTML = '';
+      // Добавить задачи на страницу
+      tasks.forEach(addTaskFromStorage);
+    });
+  } else {
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    document.getElementById('login-screen').style.display = '';
+    document.getElementById('main-app').style.display = 'none';
+    // Сбросить форму авторизации в начальное состояние
+    if (emailForm) emailForm.style.display = 'none';
+    document.getElementById('email-error').textContent = '';
+    document.getElementById('email-input').value = '';
+    document.getElementById('password-input').value = '';
+    // Кнопки "Войти" и "Зарегистрироваться" всегда видимы по умолчанию
+  }
+});
+
+// Обработка результата редиректа (для мобильных устройств)
+firebase.auth().getRedirectResult().then(function(result) {
+  if (result.user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    loadTasksFromCloud(result.user.uid, tasks => {
+      document.getElementById('active-tasks-list').innerHTML = '';
+      document.getElementById('completed-tasks-content').innerHTML = '';
+      tasks.forEach(addTaskFromStorage);
+    });
+  }
+}).catch(function(error) {
+  console.error(error);
+});
+
+// Потом onAuthStateChanged
+firebase.auth().onAuthStateChanged(user => {
+  const logoutBtn = document.getElementById('logout-btn');
+  const emailForm = document.getElementById('email-form');
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    if (logoutBtn) logoutBtn.style.display = '';
+    loadTasksFromCloud(user.uid, tasks => {
+      document.getElementById('active-tasks-list').innerHTML = '';
+      document.getElementById('completed-tasks-content').innerHTML = '';
+      tasks.forEach(addTaskFromStorage);
+    });
+  } else {
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    document.getElementById('login-screen').style.display = '';
+    document.getElementById('main-app').style.display = 'none';
+    if (emailForm) emailForm.style.display = 'none';
+    document.getElementById('email-error').textContent = '';
+    document.getElementById('email-input').value = '';
+    document.getElementById('password-input').value = '';
+  }
+});
+</script>
+<script>
+const icons = [
+  '🏆','📈','📊','💡','⏰','🗂️','📝','📅','💼','✅','📋','🔔','📎','🕒','🔑'
+];
+const iconColors = [
+  'rgba(0,212,255,0.22)',    // бирюзовый
+  'rgba(161,143,255,0.22)',  // фиолетовый
+  'rgba(234,234,234,0.18)',  // серебро
+  'rgba(44,62,80,0.19)',     // графит
+  'rgba(0,0,0,0.13)'         // глубокий чёрный
+];
+const STAR_COLOR = 'rgba(161,143,255,0.22)'; // фиолетовые звёзды
+
+// --- параметры для звезд ---
+const STAR_MIN_SIZE = 1.5;
+const STAR_MAX_SIZE = 3.5;
+const STAR_COUNT = 90;
+
+const canvas = document.getElementById('bg-anim');
+const ctx = canvas.getContext('2d');
+let W = window.innerWidth, H = window.innerHeight;
+function resizeCanvas() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function randomBetween(a, b) {
+  return a + Math.random() * (b - a);
+}
+function randomIcon() {
+  return icons[Math.floor(Math.random() * icons.length)];
+}
+
+// --- иконки ---
+let particles = [];
+for (let i = 0; i < 26; i++) {
+  particles.push({
+    x: randomBetween(0, W),
+    y: randomBetween(H, H + 300),
+    size: randomBetween(32, 54),
+    speed: randomBetween(0.12, 0.22), // для иконок
+    drift: randomBetween(-0.18, 0.18),
+    color: iconColors[Math.floor(Math.random() * iconColors.length)],
+    icon: randomIcon(),
+    alpha: randomBetween(0.18, 0.28),
+    rotate: randomBetween(0, Math.PI * 2),
+    rotateSpeed: randomBetween(-0.01, 0.01)
+  });
+}
+
+// --- звезды ---
+let stars = [];
+for (let i = 0; i < STAR_COUNT; i++) {
+  stars.push({
+    x: randomBetween(0, W),
+    y: randomBetween(0, H),
+    size: randomBetween(STAR_MIN_SIZE, STAR_MAX_SIZE),
+    speed: randomBetween(0.04, 0.09), // для звёзд
+    alpha: randomBetween(0.13, 0.25)
+  });
+}
+
+function animateParticles() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Рисуем звезды
+  for (let s of stars) {
+    ctx.save();
+    ctx.globalAlpha = s.alpha;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.size, 0, 2 * Math.PI);
+    ctx.fillStyle = STAR_COLOR;
+    ctx.shadowColor = "#fff";
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.restore();
+    s.y -= s.speed;
+    if (s.y < -s.size) {
+      s.x = randomBetween(0, W);
+      s.y = H + randomBetween(0, 40);
+      s.size = randomBetween(STAR_MIN_SIZE, STAR_MAX_SIZE);
+      s.speed = randomBetween(0.04, 0.09);
+      s.alpha = randomBetween(0.13, 0.25);
+    }
+  }
+
+  // Рисуем иконки
+  for (let p of particles) {
+    ctx.save();
+    ctx.globalAlpha = p.alpha;
+    ctx.font = `${p.size}px Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, Arial, sans-serif`;
+    ctx.fillStyle = p.color;
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rotate);
+    ctx.fillText(p.icon, 0, 0);
+    ctx.restore();
+    p.y -= p.speed;
+    p.x += p.drift;
+    p.rotate += p.rotateSpeed;
+    if (p.y < -60) {
+      p.x = randomBetween(0, W);
+      p.y = H + randomBetween(10, 200);
+      p.size = randomBetween(32, 54);
+      p.speed = randomBetween(0.12, 0.22);
+      p.drift = randomBetween(-0.18, 0.18);
+      p.color = iconColors[Math.floor(Math.random() * iconColors.length)];
+      p.icon = randomIcon();
+      p.alpha = randomBetween(0.18, 0.28);
+      p.rotate = randomBetween(0, Math.PI * 2);
+      p.rotateSpeed = randomBetween(-0.01, 0.01);
+    }
+  }
+
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+</script>
+<!-- Firebase App (core) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<!-- Firestore -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBVnoQ-qJQmKUTOvE-JZY9pdh9n5aEi6GU",
+    authDomain: "tasks-8a909.firebaseapp.com",
+    projectId: "tasks-8a909",
+    storageBucket: "tasks-8a909.appspot.com",
+    messagingSenderId: "529191959641",
+    appId: "1:529191959641:web:fea0bf91f03039adce8548",
+    measurementId: "G-MXW3RDB1SW"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
+<script>
+// Google авторизация
+document.getElementById('login-google').onclick = function() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    firebase.auth().signInWithRedirect(provider);
+  } else {
+    firebase.auth().signInWithPopup(provider);
+  }
+};
+
+// После входа — скрываем login-screen, показываем приложение
+firebase.auth().onAuthStateChanged(user => {
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    // Загружаем задачи из облака
+    loadTasksFromCloud(userId, tasks => {
+      // отобразить задачи на странице
+    });
+  }
+});
+</script>
+<script>
+// Показываем форму для входа или регистрации
+let authMode = 'login'; // или 'register'
+const emailForm = document.getElementById('email-form');
+const emailActionBtn = document.getElementById('email-action-btn');
+const emailError = document.getElementById('email-error');
+
+document.getElementById('show-login-form').onclick = function() {
+  authMode = 'login';
+  emailForm.style.display = 'flex';
+  emailActionBtn.textContent = 'Войти';
+  emailError.textContent = '';
+};
+document.getElementById('show-register-form').onclick = function() {
+  authMode = 'register';
+  emailForm.style.display = 'flex';
+  emailActionBtn.textContent = 'Зарегистрироваться';
+  emailError.textContent = '';
+};
+
+// Вход или регистрация по email/паролю
+emailActionBtn.onclick = function() {
+  const email = document.getElementById('email-input').value.trim();
+  const password = document.getElementById('password-input').value.trim();
+  emailError.textContent = '';
+  if (!email || !password) {
+    emailError.textContent = 'Введите email и пароль';
+    return;
+  }
+  if (authMode === 'login') {
+    firebase.auth().signInWithEmailAndPassword(email, password)
+      .catch(e => emailError.textContent = e.message);
+  } else {
+    firebase.auth().createUserWithEmailAndPassword(email, password)
+      .catch(e => emailError.textContent = e.message);
+  }
+};
+
+// После входа — скрываем login-screen, показываем приложение
+firebase.auth().onAuthStateChanged(user => {
+  const logoutBtn = document.getElementById('logout-btn');
+  const emailForm = document.getElementById('email-form');
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    if (logoutBtn) logoutBtn.style.display = '';
+    // Загружаем задачи из облака
+    loadTasksFromCloud(user.uid, tasks => {
+      // Очистить старые задачи
+      document.getElementById('active-tasks-list').innerHTML = '';
+      document.getElementById('completed-tasks-content').innerHTML = '';
+      // Добавить задачи на страницу
+      tasks.forEach(addTaskFromStorage);
+    });
+  } else {
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    document.getElementById('login-screen').style.display = '';
+    document.getElementById('main-app').style.display = 'none';
+    // Сбросить форму авторизации в начальное состояние
+    if (emailForm) emailForm.style.display = 'none';
+    document.getElementById('email-error').textContent = '';
+    document.getElementById('email-input').value = '';
+    document.getElementById('password-input').value = '';
+  }
+});
+</script>
+<script>
+document.getElementById('logout-btn').onclick = function() {
+  firebase.auth().signOut();
+  // После выхода автоматически покажется login-screen через onAuthStateChanged
+};
+</script>
