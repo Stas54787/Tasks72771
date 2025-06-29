@@ -848,7 +848,14 @@ firebase.auth().onAuthStateChanged(user => {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('main-app').style.display = '';
     if (logoutBtn) logoutBtn.style.display = '';
-    // ...логика загрузки задач...
+    // Загружаем задачи из облака
+    loadTasksFromCloud(user.uid, tasks => {
+      // Очистить старые задачи
+      document.getElementById('active-tasks-list').innerHTML = '';
+      document.getElementById('completed-tasks-content').innerHTML = '';
+      // Добавить задачи на страницу
+      tasks.forEach(addTaskFromStorage);
+    });
   } else {
     if (logoutBtn) logoutBtn.style.display = 'none';
     document.getElementById('login-screen').style.display = '';
@@ -860,6 +867,19 @@ firebase.auth().onAuthStateChanged(user => {
     document.getElementById('password-input').value = '';
     // Кнопки "Войти" и "Зарегистрироваться" всегда видимы по умолчанию
   }
+});
+
+// Обработка результата редиректа (для мобильных устройств)
+firebase.auth().getRedirectResult().then(function(result) {
+  if (result.user) {
+    // Пользователь успешно вошёл, показываем основной интерфейс
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    // Здесь можно загрузить задачи пользователя
+  }
+}).catch(function(error) {
+  // Обработка ошибок
+  console.error(error);
 });
 </script>
 <script>
