@@ -872,14 +872,40 @@ firebase.auth().onAuthStateChanged(user => {
 // Обработка результата редиректа (для мобильных устройств)
 firebase.auth().getRedirectResult().then(function(result) {
   if (result.user) {
-    // Пользователь успешно вошёл, показываем основной интерфейс
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('main-app').style.display = '';
-    // Здесь можно загрузить задачи пользователя
+    loadTasksFromCloud(result.user.uid, tasks => {
+      document.getElementById('active-tasks-list').innerHTML = '';
+      document.getElementById('completed-tasks-content').innerHTML = '';
+      tasks.forEach(addTaskFromStorage);
+    });
   }
 }).catch(function(error) {
-  // Обработка ошибок
   console.error(error);
+});
+
+// Потом onAuthStateChanged
+firebase.auth().onAuthStateChanged(user => {
+  const logoutBtn = document.getElementById('logout-btn');
+  const emailForm = document.getElementById('email-form');
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    if (logoutBtn) logoutBtn.style.display = '';
+    loadTasksFromCloud(user.uid, tasks => {
+      document.getElementById('active-tasks-list').innerHTML = '';
+      document.getElementById('completed-tasks-content').innerHTML = '';
+      tasks.forEach(addTaskFromStorage);
+    });
+  } else {
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    document.getElementById('login-screen').style.display = '';
+    document.getElementById('main-app').style.display = 'none';
+    if (emailForm) emailForm.style.display = 'none';
+    document.getElementById('email-error').textContent = '';
+    document.getElementById('email-input').value = '';
+    document.getElementById('password-input').value = '';
+  }
 });
 </script>
 <script>
